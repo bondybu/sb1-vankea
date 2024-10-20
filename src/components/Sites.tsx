@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useForm } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
 import { Pencil, Trash2, Plus, X, ExternalLink } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Site {
   id: string;
@@ -13,6 +14,7 @@ interface Site {
   theme: string | null;
   language: string | null;
   test_mode: boolean;
+  created_by: string | null;
 }
 
 const Sites: React.FC = () => {
@@ -21,6 +23,7 @@ const Sites: React.FC = () => {
   const [additionalDomains, setAdditionalDomains] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const { register, handleSubmit, reset, setValue, watch } = useForm<Site & { newAdditionalDomain: string }>();
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchSites();
@@ -48,6 +51,7 @@ const Sites: React.FC = () => {
       const finalSiteData = {
         ...siteData,
         additional_domains: additionalDomains.length > 0 ? additionalDomains : null,
+        created_by: user?.id,
       };
 
       console.log('Submitting site data:', finalSiteData);
@@ -63,6 +67,7 @@ const Sites: React.FC = () => {
           ...finalSiteData,
           id: uuidv4(),
           created_at: new Date().toISOString(),
+          created_by: user?.id,
         };
         result = await supabase.from('sites').insert(newSite);
       }
