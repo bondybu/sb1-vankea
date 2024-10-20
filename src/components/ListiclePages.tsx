@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useForm } from 'react-hook-form';
 import { v4 as uuidv4 } from 'uuid';
 import { Pencil, Trash2, Copy, ExternalLink } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ListiclePage {
   id: string;
@@ -44,6 +45,7 @@ const ListiclePages: React.FC = () => {
   const [sites, setSites] = useState<Site[]>([]);
   const [editingPage, setEditingPage] = useState<ListiclePage | null>(null);
   const { register, handleSubmit, reset, setValue } = useForm<ListiclePage>();
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchPages();
@@ -63,27 +65,30 @@ const ListiclePages: React.FC = () => {
   };
 
   const onSubmit = async (data: ListiclePage) => {
-    if (editingPage) {
-      const { error } = await supabase
-        .from('listicle_pages')
-        .update(data)
-        .eq('id', editingPage.id);
-      if (error) console.error('Error updating page:', error);
-      else {
-        fetchPages();
-        setEditingPage(null);
+    try {
+      if (editingPage) {
+        const { error } = await supabase
+          .from('listicle_pages')
+          .update(data)
+          .eq('id', editingPage.id);
+        if (error) throw error;
+      } else {
+        const newPage = {
+          ...data,
+          id: uuidv4(),
+          created_at: new Date().toISOString(),
+          created_by: user?.id,
+        };
+        const { error } = await supabase.from('listicle_pages').insert(newPage);
+        if (error) throw error;
       }
-    } else {
-      const newPage = {
-        ...data,
-        id: uuidv4(),
-        created_at: new Date().toISOString(),
-      };
-      const { error } = await supabase.from('listicle_pages').insert(newPage);
-      if (error) console.error('Error creating page:', error);
-      else fetchPages();
+      fetchPages();
+      setEditingPage(null);
+      reset();
+    } catch (error) {
+      console.error('Error saving listicle page:', error);
+      // Handle error (e.g., show an error message to the user)
     }
-    reset();
   };
 
   const handleEdit = (page: ListiclePage) => {
